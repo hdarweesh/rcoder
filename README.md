@@ -112,7 +112,7 @@ rcoder/
 
   - Runs on port 3000.
 
-  - Communicates with the backend at `http://backend:8080` (as defined in Docker Compose networking).
+  - Communicates with the backend at `http://localhost:8080` (as defined in Docker Compose networking).
 
 - **Backend**:
 
