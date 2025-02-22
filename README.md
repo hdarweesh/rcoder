@@ -182,7 +182,7 @@ To add a new language executor:
 
 **6. Deployment and Scalability**
 
-- **Kubernetes Deployment**: Deploy the application on a Kubernetes cluster to achieve scalability, high availability, and efficient resource management. citeturn0search1
+- **Kubernetes Deployment**: Deploy the application on a Kubernetes cluster to achieve scalability, high availability, and efficient resource management.
 - **CI/CD Pipeline**: Establish a Continuous Integration/Continuous Deployment pipeline to automate testing and deployment processes, ensuring rapid and reliable updates.
 
 **7. Additional Enhancements**
