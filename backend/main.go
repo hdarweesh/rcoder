@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hdarweesh/rcoder/backend/redis"
+
 	"github.com/rs/cors"
 	"github.com/segmentio/kafka-go"
 )
@@ -63,13 +65,13 @@ func produceExecutionRequest(language, code string) (string, error) {
 // Consume results from Kafka
 func consumeExecutionResult(taskID string) (CodeExecutionResponse, error) {
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:        []string{kafkaBroker},
-		Topic:          resultTopic,
-		GroupID:        "backend-consumer",
-		MinBytes:       10e3, // 10KB
-		MaxBytes:       10e6, // 10MB
-		CommitInterval: time.Second,
-		StartOffset:    kafka.FirstOffset,
+		Brokers:  []string{kafkaBroker},
+		Topic:    resultTopic,
+		GroupID:  "backend-consumer",
+		MinBytes: 10e3, // 10KB
+		MaxBytes: 10e6, // 10MB
+		// CommitInterval: time.Second,
+		StartOffset: kafka.FirstOffset,
 	})
 
 	defer reader.Close()
@@ -91,7 +93,6 @@ func consumeExecutionResult(taskID string) (CodeExecutionResponse, error) {
 
 		if result.TaskID == taskID {
 			log.Printf("Successfully consumed result for : %s: %v", taskID, result)
-
 			return result, nil
 		}
 	}
@@ -112,6 +113,21 @@ func executeCodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redisCache := redis.GetRedisCache()
+	codeHash := redisCache.HashCode(request.Code)
+
+	// Check if code result is already cached
+	var cachedResult CodeExecutionResponse
+	if err := redisCache.GetCachedResult(codeHash, &cachedResult); err == nil {
+		// Cache hit, return result
+		responseBytes, _ := json.Marshal(cachedResult)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(responseBytes)
+		log.Printf("Cache hit for code hash: %s, returning cached result", codeHash)
+		return
+	}
+
+	// Produce execution request
 	taskID, err := produceExecutionRequest(request.Language, request.Code)
 	if err != nil {
 		log.Printf("Failed to enqueue execution: %v", err)
@@ -119,13 +135,16 @@ func executeCodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Wait for result
+	// Wait for result from Kafka
 	result, err := consumeExecutionResult(taskID)
 	if err != nil {
 		log.Printf("Failed to consume result: %v", err)
 		http.Error(w, "Execution timed out", http.StatusGatewayTimeout)
 		return
 	}
+
+	// Cache the result using code hash as key
+	_ = redisCache.CacheResult(codeHash, result)
 
 	responseBytes, _ := json.Marshal(result)
 	w.Header().Set("Content-Type", "application/json")

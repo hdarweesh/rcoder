@@ -15,8 +15,8 @@ services:
     networks:
       - kafka-network
       - frontend_network
-  
-### Go Executor
+
+  ### Go Executor
   executor-go:
     build:
       context: ./executors/go
@@ -39,7 +39,7 @@ services:
       KAFKA_BROKER: kafka:9092
     networks:
       - kafka-network
-  
+
   executor-nodejs:
     build:
       context: ./executors/nodejs
@@ -61,7 +61,7 @@ services:
 
   ### Kafka Broker
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.4.3
     container_name: kafka
     depends_on:
       - zookeeper
@@ -75,7 +75,7 @@ services:
       - "9092:9092"
     networks:
       - kafka-network
-      
+
   frontend:
     build:
       context: ./frontend
@@ -85,6 +85,14 @@ services:
       - frontend_network
     depends_on:
       - backend
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - kafka-network
 
 networks:
   kafka-network:
